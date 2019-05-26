@@ -1,0 +1,158 @@
+// vim: set syntax=pascal:
+// script.simba
+// Contains or may eventually contain SRL, RSWalker, the OSRS client, and a logger.
+// This is the global context of the script, so things that need to be globally available will end up here.
+//
+//
+// Examples
+//
+// How to start a client, create player, and login.
+//
+// begin
+//   Script.Init('C:\Users\Administrator\jagexcache\jagexlauncher\bin\JagexLauncher');
+//   Script.DeclarePlayer('foo', 'bar', 420);
+//   Players.SetCurrent(0);
+//   Script.Login();
+// end.
+//
+//
+// How to login any player at any time.
+//
+// begin
+//   Players.SetCurrent(0);
+//   Script.Login();
+// end.
+
+
+{$I SRL/OSR.simba}
+{$I RSWalker/Walker.simba}
+{$I SRL/utils/rsclient.simba}
+{$I SRL/utils/rsclient_overrides.simba}
+{$include utils.simba}
+
+type
+  TScript = record
+    Walker: TRSWalker;
+    Antiban: TAntiban;
+    ClientPath: String;
+    ClientProcess: TProcess;
+  end;
+
+var
+  Script: TScript;
+
+procedure TScript.LoadMap(mapPath: String; downsample: Integer = 6); begin
+  if Assigned(Walker) then
+    writeln('Script.LoadMap-: Walker already initialized.  Reloading Walker...');
+    Walker.Free;
+
+  writeln('Script.LoadMap-: Loading map: ' + mapPath);
+  Walker.Init(mapPath, downsample);
+  AddOnTerminate(@Walker.Free);
+end;
+
+procedure TScript.StartClient(ClientPath: String); begin
+  writeln('Script.StartClient-: Launching client at ' + ClientPath);
+  Script.ClientProcess.Init(nil);
+  Script.ClientProcess.setExecutable(ClientPath);
+  Script.ClientProcess.setPriority(ppHigh);
+  With Script.ClientProcess.getParameters do
+    begin
+      add('oldschool');
+    end;
+  Script.ClientProcess.Execute;
+  writeln('Script.StartClient-: Client Launched.'); // TODO: better waiting
+  writeln('Script.StartClient-: Waiting for client to load.');
+  repeat Wait(2000); until not FindJagexLTD(); // finds the little loading bar that happens before the client opens
+  //writeln('Script.Init-: Setting up SRL and logging in.');
+  SRL.SetupForClient();
+  RSClient.SetFocus();
+  repeat Wait(1000) until SRL.IsClientReady();
+  writeln('Script.StartClient-: Client loaded (probably...).');
+end;
+
+procedure TScript.Free; begin
+  writeln('Script.Free-: Freeing Context.');
+  if Assigned(Walker) then
+    Walker.Free;
+    RSClient.Close();
+    ClientProcess.Free();
+end;
+
+procedure TScript.Login();
+var
+  user, pass: String;
+  w: Integer;  // world
+  p: TPlayer; // current player
+begin
+  p := Players.GetCurrent()^;
+  user := p.LoginName;
+  pass := p.Password;
+  w    := p.World;
+  writeln(Format('Script.Login-: Logging into World %d as %s.', [w, user]));
+  if not SRL.isLoggedIn then begin
+    if LoginScreen.GetCurrentWorld() <> w then begin
+      writeln('Script.Login-: Selecting world ' + IntToStr(w));
+      LoginScreen.OpenWorldSwitcher();
+      WorldSwitcher.SelectWorld(w);
+    end;
+
+    if LoginScreen.Open() then LoginScreen.EnterDetails(user, pass);
+    Wait(5000); // wait for client loading and window ID change. could be shorter
+    RSClient.Find();
+    if Lobby.IsOpen() then Lobby.EnterGame();
+  end;
+
+  writeln('Script.Login-: Checking/setting camera options.');
+  Options.SetZoom(50);
+  Options.SetBrightness(100);
+  Mainscreen.SetAngle(True);
+
+  writeln('Script.Login-: Login complete.');
+end;
+
+procedure TScript.Init(clientPath: String); begin
+  writeln('Script.Init-: Initializing Context.');
+  if not FindRS() then begin
+    writeln('Script.Init-: Could not find Runescape client process.');
+    Script.StartClient(clientPath);
+  end else begin
+    writeln('Script.Init-: Found Runescape client process.');
+    SRL.SetupForClient();
+    RSClient.SetFocus();
+  end;
+
+  writeln('Script.Init-: Initializing Antiban.');
+  Antiban.Init(SKILL_TOTAL, 4);
+  Antiban.SetupBiometrics();
+
+  AddOnTerminate(@Script.Free);
+  writeln('Script.Init-: Done.');
+end;
+
+procedure TScript.Antiban; begin
+  writeln('Script.Antiban-: Doing Antiban.');
+  if not SRL.IsLoggedIn() then begin
+    writeln('Script.Antiban-: Player not logged in, relogging...');
+    Script.Login();
+    Exit;
+  end;
+  SRL.DismissRandom();
+  Antiban.DoAntiban();
+  writeln('Script.Antiban-: Antiban done!');
+end;
+
+procedure TScript.DeclarePlayer(name, pass: String; w: Integer; isActive: Boolean = True; isMember: Boolean = False);
+begin
+  with Players.New()^ do
+  begin
+    LoginName   := name;
+    Password    := pass;
+    IsActive    := isActive;
+    IsMember    := isMember;
+    World       := w;
+  end;
+  writeln(Format('Script.DeclarePlayer-: Username: %s, World: %d', [name, w]));
+end;
+
+
