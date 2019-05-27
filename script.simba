@@ -1,7 +1,7 @@
 // vim: set syntax=pascal:
 // script.simba
-// Contains or may eventually contain SRL, RSWalker, the OSRS client, and a logger.
-// This is the global context of the script, so things that need to be globally available will end up here.
+// Contains or may eventually contain SRL, RSWalker, the OSRS client, some visual debugging tools (maybe), and a logger.
+// This is the global context of the script, so things that need to be available globally will end up here.
 //
 //
 // Examples
@@ -36,11 +36,13 @@ type
     Antiban: TAntiban;
     ClientPath: String;
     ClientProcess: TProcess;
+    Debugger: TForm;
   end;
 
 var
   Script: TScript;
 
+// Script.LoadMap-: Loads a map into RSWalker.
 procedure TScript.LoadMap(mapPath: String; downsample: Integer = 6); begin
   if Assigned(Walker) then
     writeln('Script.LoadMap-: Walker already initialized.  Reloading Walker...');
@@ -51,6 +53,7 @@ procedure TScript.LoadMap(mapPath: String; downsample: Integer = 6); begin
   AddOnTerminate(@Walker.Free);
 end;
 
+// Script.StartClient-: Initializes OSRS client & SRL
 procedure TScript.StartClient(ClientPath: String); begin
   writeln('Script.StartClient-: Launching client at ' + ClientPath);
   Script.ClientProcess.Init(nil);
@@ -61,29 +64,35 @@ procedure TScript.StartClient(ClientPath: String); begin
       add('oldschool');
     end;
   Script.ClientProcess.Execute;
-  writeln('Script.StartClient-: Client Launched.'); // TODO: better waiting
-  writeln('Script.StartClient-: Waiting for client to load.');
-  repeat Wait(2000); until not FindJagexLTD(); // finds the little loading bar that happens before the client opens
-  //writeln('Script.Init-: Setting up SRL and logging in.');
+
+  writeln('Script.StartClient-: Client Launched.  Waiting for client to load...');
+  repeat Wait(2000); until not FindJagexLTD(); // finds the little loading bar that happens before the client window opens
+
+  writeln('Script.StartClient-: Setting up SRL and logging in.');
   SRL.SetupForClient();
   RSClient.SetFocus();
   repeat Wait(1000) until SRL.IsClientReady();
+
   writeln('Script.StartClient-: Client loaded (probably...).');
 end;
 
+// Script.Free-: Frees script resources.
 procedure TScript.Free; begin
-  writeln('Script.Free-: Freeing Context.');
+  writeln('Script.Free-: Freeing Script.');
   if Assigned(Walker) then
     Walker.Free;
     RSClient.Close();
     ClientProcess.Free();
+
+  writeln('Script.Free-: Script freed.');
 end;
 
+// Script.Login-: Logs the Players.CurrentPlayer in.
 procedure TScript.Login();
 var
   user, pass: String;
   w: Integer;  // world
-  p: TPlayer; // current player
+  p: TPlayer;  // current player
 begin
   p := Players.GetCurrent()^;
   user := p.LoginName;
@@ -111,6 +120,7 @@ begin
   writeln('Script.Login-: Login complete.');
 end;
 
+// Script.Init-: Initializes the Script, Antiban, Debugger, and (eventually) the Logger.
 procedure TScript.Init(clientPath: String); begin
   writeln('Script.Init-: Initializing Context.');
   if not FindRS() then begin
@@ -126,10 +136,13 @@ procedure TScript.Init(clientPath: String); begin
   Antiban.Init(SKILL_TOTAL, 4);
   Antiban.SetupBiometrics();
 
+
+
   AddOnTerminate(@Script.Free);
   writeln('Script.Init-: Done.');
 end;
 
+// Script.Antiban-: Runs the Antiban.
 procedure TScript.Antiban; begin
   writeln('Script.Antiban-: Doing Antiban.');
   if not SRL.IsLoggedIn() then begin
@@ -142,7 +155,8 @@ procedure TScript.Antiban; begin
   writeln('Script.Antiban-: Antiban done!');
 end;
 
-procedure TScript.DeclarePlayer(name, pass: String; w: Integer; isActive: Boolean = True; isMember: Boolean = False);
+// Script.DeclarePlayer-: Declares a Player.  Returns the index of the new player in the Players array.
+function TScript.DeclarePlayer(name, pass: String; w: Integer; isActive: Boolean = True; isMember: Boolean = False): Integer;
 begin
   with Players.New()^ do
   begin
@@ -153,6 +167,7 @@ begin
     World       := w;
   end;
   writeln(Format('Script.DeclarePlayer-: Username: %s, World: %d', [name, w]));
+  Result := Players.GetCount() - 1;
 end;
 
 
