@@ -68,10 +68,10 @@ procedure TScript.StartClient(ClientPath: String); begin
   writeln('Script.StartClient-: Client Launched.  Waiting for client to load...');
   repeat Wait(2000); until not FindJagexLTD(); // finds the little loading bar that happens before the client window opens
 
-  writeln('Script.StartClient-: Setting up SRL and logging in.');
+  writeln('Script.StartClient-: Setting up SRL.');
   SRL.SetupForClient();
-  RSClient.SetFocus();
   repeat Wait(1000) until SRL.IsClientReady();
+  RSClient.SetFocus();
 
   writeln('Script.StartClient-: Client loaded (probably...).');
 end;
