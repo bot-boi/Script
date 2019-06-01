@@ -19,7 +19,7 @@
 // How to login any player at any time.
 //
 // begin
-//   Players.SetCurrent(0);
+//   Players.SetCurrent(PlayerIndex);
 //   Script.Login();
 // end.
 
@@ -36,7 +36,6 @@ type
     Antiban: TAntiban;
     ClientPath: String;
     ClientProcess: TProcess;
-    Debugger: TForm;
   end;
 
 var
@@ -58,7 +57,7 @@ procedure TScript.StartClient(ClientPath: String); begin
   writeln('Script.StartClient-: Launching client at ' + ClientPath);
   Script.ClientProcess.Init(nil);
   Script.ClientProcess.setExecutable(ClientPath);
-  Script.ClientProcess.setPriority(ppHigh);
+  // Script.ClientProcess.setPriority(ppHigh);
   With Script.ClientProcess.getParameters do
     begin
       add('oldschool');
@@ -66,11 +65,13 @@ procedure TScript.StartClient(ClientPath: String); begin
   Script.ClientProcess.Execute;
 
   writeln('Script.StartClient-: Client Launched.  Waiting for client to load...');
-  repeat Wait(2000); until not FindJagexLTD(); // finds the little loading bar that happens before the client window opens
-
+  repeat Wait(1000); until FindJagexLTD(); // finds the little loading bar that happens before the client window opens
+  repeat Wait(1000); until FindRS();
+  wait(10000);
   writeln('Script.StartClient-: Setting up SRL.');
   SRL.SetupForClient();
-  repeat Wait(1000) until SRL.IsClientReady();
+  repeat Wait(1000); writeln(2); until SRL.IsClientReady();
+  Wait(1000);
   RSClient.SetFocus();
 
   writeln('Script.StartClient-: Client loaded (probably...).');
@@ -112,7 +113,7 @@ begin
     if Lobby.IsOpen() then Lobby.EnterGame();
   end;
 
-  writeln('Script.Login-: Checking/setting camera options.');
+  writeln('Script.Login-: Setting default camera options.');
   Options.SetZoom(50);
   Options.SetBrightness(100);
   Mainscreen.SetAngle(True);
@@ -135,8 +136,6 @@ procedure TScript.Init(clientPath: String); begin
   writeln('Script.Init-: Initializing Antiban.');
   Antiban.Init(SKILL_TOTAL, 4);
   Antiban.SetupBiometrics();
-
-
 
   AddOnTerminate(@Script.Free);
   writeln('Script.Init-: Done.');
