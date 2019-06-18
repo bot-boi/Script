@@ -9,7 +9,10 @@
 // How to start a client, create player, and login.
 //
 // begin
-//   Script.Init('C:\Users\Administrator\jagexcache\jagexlauncher\bin\JagexLauncher');
+//   Script.Init('C:\Users\Administrator\jagexcache\jagexlauncher\bin\JagexLauncher');  // windows
+//         OR
+//   Script.Init('/usr/games/runescape --prmfile=oldschool.prm & echo -ne "\n"');       // linux rsu-client ppa. note: manual targeting isn't the same as automatic
+//
 //   Script.DeclarePlayer('foo', 'bar', 420);
 //   Players.SetCurrent(0);
 //   Script.Login();
@@ -24,11 +27,14 @@
 // end.
 
 
-{$I SRL/OSR.simba}
+{$I SRL/osr.simba}
 {$I RSWalker/Walker.simba}
-{$I SRL/utils/rsclient.simba}
-{$I SRL/utils/rsclient_overrides.simba}
+{$I SRL/osr/rsclient.simba}
+{$I SRL/osr/rsclient_overrides.simba}
 {$include utils.simba}
+
+const
+  MY_DEFAULT_WORLD_FILTER: TRSWorldFilter = [[WORLD_PVP, WORLD_DEADMAN, WORLD_SKILL, WORLD_EVENT, WORLD_AUSTRALIA, WORLD_GERMANY, WORLD_UK], [302, 330]];
 
 type
   TScript = record
@@ -52,27 +58,47 @@ procedure TScript.LoadMap(mapPath: String; downsample: Integer = 6); begin
   AddOnTerminate(@Walker.Free);
 end;
 
+// Script.LoadMapSlices-: Loads map slices into RSWalker.
+procedure TScript.LoadMapSlices(slices: Array of Array of Integer);     // [[5,6][5,5]] means slices 5_6.png & 5_5.png
+var
+  slicesSpecial: TPointArray;
+  slice: Array of Integer;
+begin
+  for slice in slices do begin
+    slicesSpecial.Append(Point(slice[0], slice[1]));
+  end;
+
+  if Assigned(Walker) then
+    writeln('Script.LoadMapSlices-: Walker already initialized.  Reloading Walker...');
+    Walker.Free;
+
+  writeln('Script.LoadMapSlices-: Loading slices!');
+  Walker.InitEx('world', slicesSpecial);
+  AddOnTerminate(@Walker.Free);
+end;
+
 // Script.StartClient-: Initializes OSRS client & SRL
 procedure TScript.StartClient(ClientPath: String); begin
-  writeln('Script.StartClient-: Launching client at ' + ClientPath);
-  Script.ClientProcess.Init(nil);
-  Script.ClientProcess.setExecutable(ClientPath);
+  // writeln('Script.StartClient-: Launching client at ' + ClientPath);
+  // Script.ClientProcess.Init(nil);
+  // Script.ClientProcess.setExecutable(ClientPath);
   // Script.ClientProcess.setPriority(ppHigh);
-  With Script.ClientProcess.getParameters do
-    begin
-      add('oldschool');
-    end;
-  Script.ClientProcess.Execute;
+  // With Script.ClientProcess.getParameters do
+  //   begin
+  //     add('oldschool');
+  //   end;
+  // Script.ClientProcess.Execute;
 
-  writeln('Script.StartClient-: Client Launched.  Waiting for client to load...');
-  repeat Wait(1000); until FindJagexLTD(); // finds the little loading bar that happens before the client window opens
-  repeat Wait(1000); until FindRS();
-  wait(10000);
+  // writeln('Script.StartClient-: Client Launched.  Waiting for client to load...');
+  // repeat Wait(1000); until FindJagexLTD(); // finds the little loading bar that happens before the client window opens
+  // repeat Wait(1000); until FindRS();
+  // wait(10000);
   writeln('Script.StartClient-: Setting up SRL.');
-  SRL.SetupForClient();
-  repeat Wait(1000); writeln(2); until SRL.IsClientReady();
-  Wait(1000);
-  RSClient.SetFocus();
+
+  SRL.SetupForClient(ClientPath);
+  // repeat Wait(1000); writeln(2); until SRL.IsClientReady();
+  // Wait(1000);
+  // RSClient.SetFocus();
 
   writeln('Script.StartClient-: Client loaded (probably...).');
 end;
@@ -88,21 +114,24 @@ procedure TScript.Free; begin
   writeln('Script.Free-: Script freed.');
 end;
 
-// Script.Login-: Logs the Players.CurrentPlayer in.
-procedure TScript.Login();
+// Script.Login-: Logs the Players.CurrentPlayer into CurrentPlayer.World.
+function TScript.LoginStatic(): Boolean;
 var
   user, pass: String;
   w: Integer;  // world
   p: TPlayer;  // current player
 begin
+  Result := False;
   p := Players.GetCurrent()^;
   user := p.LoginName;
   pass := p.Password;
   w    := p.World;
-  writeln(Format('Script.Login-: Logging into World %d as %s.', [w, user]));
+
+  writeln(Format('Script.LoginStatic-: Logging into World %d as %s.', [w, user]));
+
   if not SRL.isLoggedIn then begin
     if LoginScreen.GetCurrentWorld() <> w then begin
-      writeln('Script.Login-: Selecting world ' + IntToStr(w));
+      writeln('Script.LoginStatic-: Selecting world ' + IntToStr(w));
       LoginScreen.OpenWorldSwitcher();
       WorldSwitcher.SelectWorld(w);
     end;
@@ -111,7 +140,26 @@ begin
     Wait(5000); // wait for client loading and window ID change. could be shorter
     RSClient.Find();
     if Lobby.IsOpen() then Lobby.EnterGame();
+    Result := True;
   end;
+
+  writeln('Script.LoginStatic-: Setting default camera options.');
+  Options.SetZoom(50);
+  Options.SetBrightness(100);
+  Mainscreen.SetAngle(True);
+
+  writeln('Script.LoginStatic-: Login complete.');
+end;
+
+function TScript.Login(worldParams: TRSWorldFilter = MY_DEFAULT_WORLD_FILTER): Boolean; // logins in using world filters
+var
+  p: TPlayer;  // current player
+begin
+  Result := False;
+  p := Players.GetCurrent()^;
+  p.WorldFilter := worldParams;
+  writeln(Format('Script.Login-: %s is logging in!', [p.LoginName]));
+  Result := Players.LoginCurrent();
 
   writeln('Script.Login-: Setting default camera options.');
   Options.SetZoom(50);
@@ -124,14 +172,9 @@ end;
 // Script.Init-: Initializes the Script, Antiban, Debugger, and (eventually) the Logger.
 procedure TScript.Init(clientPath: String); begin
   writeln('Script.Init-: Initializing Context.');
-  if not FindRS() then begin
-    writeln('Script.Init-: Could not find Runescape client process.');
-    Script.StartClient(clientPath);
-  end else begin
-    writeln('Script.Init-: Found Runescape client process.');
-    SRL.SetupForClient();
-    RSClient.SetFocus();
-  end;
+
+  SRL.SetupForClient(clientPath);
+  RSClient.SetFocus();
 
   writeln('Script.Init-: Initializing Antiban.');
   Antiban.Init(SKILL_TOTAL, 4);
@@ -169,4 +212,48 @@ begin
   Result := Players.GetCount() - 1;
 end;
 
+procedure TScript.DebugATPA(ATPA: T2DPointArray);
+var
+  b: TBox; // bounds
+  width, height, bMapIndex: Int32;
 
+begin
+  writeln('Script.DebugATPA-: Drawing ATPA :)');
+
+  b := Mainscreen.GetBounds();
+  width  := b.X1 - b.X2;
+  height := b.Y1 - b.Y2;
+  if width  < 0 then width  := width  * -1;
+  if height < 0 then height := height * -1;
+
+  bMapIndex   := CreateBitmap(width, height);
+  CopyClientToBitmap(bMapIndex, b.X1, b.Y1, b.X2, b.Y2);
+  DrawATPABitmap(bMapIndex, ATPA);
+  DisplayDebugImgWindow(width, height);
+  DrawBitmapDebugImg(bMapIndex);
+
+  writeln('Script.DebugATPA-: Displayed ATPA!');
+end;
+
+procedure TScript.DebugTPA(TPA: TPointArray);
+var
+  b: TBox; // bounds
+  width, height, bMapIndex: Int32;
+
+begin
+  writeln('Script.DebugATPA-: Drawing ATPA :)');
+
+  b := Mainscreen.GetBounds();
+  width  := b.X1 - b.X2;
+  height := b.Y1 - b.Y2;
+  if width  < 0 then width  := width  * -1;
+  if height < 0 then height := height * -1;
+
+  bMapIndex   := CreateBitmap(width, height);
+  CopyClientToBitmap(bMapIndex, b.X1, b.Y1, b.X2, b.Y2);
+  DrawTPABitmap(bMapIndex, TPA, clRed);
+  DisplayDebugImgWindow(width, height);
+  DrawBitmapDebugImg(bMapIndex);
+
+  writeln('Script.DebugATPA-: Displayed ATPA!');
+end;
