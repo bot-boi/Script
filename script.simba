@@ -210,6 +210,7 @@ begin
   // i had some trouble with ATPA points exceeding bitmap bounds recently
   // it only happens when part of the debug bitmap is covered by another window, and presumably it only happens on linux
   bMapIndex := BitmapFromClient(b.X1, b.Y1, b.X2, b.Y2);
+  CopyClientToBitmap(bMapIndex, b.X1, b.Y1, b.X2, b.Y2);
   DrawATPABitmap(bMapIndex, ATPA);
   DisplayDebugImgWindow(width, height);
   DrawBitmapDebugImg(bMapIndex);
