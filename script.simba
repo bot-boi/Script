@@ -31,7 +31,6 @@
 {$I RSWalker/Walker.simba}
 {$I SRL/osr/rsclient.simba}
 {$I SRL/osr/rsclient_overrides.simba}
-{$include utils.simba}
 
 const
   MY_DEFAULT_WORLD_FILTER: TRSWorldFilter = [[WORLD_PVP, WORLD_DEADMAN, WORLD_SKILL, WORLD_EVENT, WORLD_AUSTRALIA, WORLD_GERMANY, WORLD_UK], [302, 330]];
@@ -79,27 +78,8 @@ end;
 
 // Script.StartClient-: Initializes OSRS client & SRL
 procedure TScript.StartClient(ClientPath: String); begin
-  // writeln('Script.StartClient-: Launching client at ' + ClientPath);
-  // Script.ClientProcess.Init(nil);
-  // Script.ClientProcess.setExecutable(ClientPath);
-  // Script.ClientProcess.setPriority(ppHigh);
-  // With Script.ClientProcess.getParameters do
-  //   begin
-  //     add('oldschool');
-  //   end;
-  // Script.ClientProcess.Execute;
-
-  // writeln('Script.StartClient-: Client Launched.  Waiting for client to load...');
-  // repeat Wait(1000); until FindJagexLTD(); // finds the little loading bar that happens before the client window opens
-  // repeat Wait(1000); until FindRS();
-  // wait(10000);
   writeln('Script.StartClient-: Setting up SRL.');
-
   SRL.SetupForClient(ClientPath);
-  // repeat Wait(1000); writeln(2); until SRL.IsClientReady();
-  // Wait(1000);
-  // RSClient.SetFocus();
-
   writeln('Script.StartClient-: Client loaded (probably...).');
 end;
 
@@ -114,7 +94,7 @@ procedure TScript.Free; begin
   writeln('Script.Free-: Script freed.');
 end;
 
-// Script.Login-: Logs the Players.CurrentPlayer into CurrentPlayer.World.
+// Script.LoginStatic-: Logs the Players.CurrentPlayer into CurrentPlayer.World.
 function TScript.LoginStatic(): Boolean;
 var
   user, pass: String;
@@ -151,13 +131,14 @@ begin
   writeln('Script.LoginStatic-: Login complete.');
 end;
 
-function TScript.Login(worldParams: TRSWorldFilter = MY_DEFAULT_WORLD_FILTER): Boolean; // logins in using world filters
+function TScript.Login(worldParams: TRSWorldFilter = MY_DEFAULT_WORLD_FILTER): Boolean; // login using world filters
 var
   p: TPlayer;  // current player
 begin
   Result := False;
   p := Players.GetCurrent()^;
   p.WorldFilter := worldParams;
+
   writeln(Format('Script.Login-: %s is logging in!', [p.LoginName]));
   Result := Players.LoginCurrent();
 
@@ -226,13 +207,14 @@ begin
   if width  < 0 then width  := width  * -1;
   if height < 0 then height := height * -1;
 
-  bMapIndex   := CreateBitmap(width, height);
-  CopyClientToBitmap(bMapIndex, b.X1, b.Y1, b.X2, b.Y2);
+  // i had some trouble with ATPA points exceeding bitmap bounds recently
+  // it only happens when part of the debug bitmap is covered by another window, and presumably it only happens on linux
+  bMapIndex := BitmapFromClient(b.X1, b.Y1, b.X2, b.Y2);
   DrawATPABitmap(bMapIndex, ATPA);
   DisplayDebugImgWindow(width, height);
   DrawBitmapDebugImg(bMapIndex);
 
-  writeln('Script.DebugATPA-: Displayed ATPA!');
+  writeln('Script.DebugATPA-: Displaying ATPA!');
 end;
 
 procedure TScript.DebugTPA(TPA: TPointArray);
@@ -241,7 +223,7 @@ var
   width, height, bMapIndex: Int32;
 
 begin
-  writeln('Script.DebugATPA-: Drawing ATPA :)');
+  writeln('Script.DebugTPA-: Drawing TPA :)');
 
   b := Mainscreen.GetBounds();
   width  := b.X1 - b.X2;
@@ -255,5 +237,5 @@ begin
   DisplayDebugImgWindow(width, height);
   DrawBitmapDebugImg(bMapIndex);
 
-  writeln('Script.DebugATPA-: Displayed ATPA!');
+  writeln('Script.DebugTPA-: Displaying TPA!');
 end;
