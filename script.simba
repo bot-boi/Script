@@ -32,15 +32,14 @@
 {$I SRL/osr/rsclient.simba}
 {$I SRL/osr/rsclient_overrides.simba}
 
-const
-  MY_DEFAULT_WORLD_FILTER: TRSWorldFilter = [[WORLD_PVP, WORLD_DEADMAN, WORLD_SKILL, WORLD_EVENT, WORLD_AUSTRALIA, WORLD_GERMANY, WORLD_UK], [302, 330]];
+const                                                                                                                                                // popular & west coast US worlds
+  MY_DEFAULT_WORLD_FILTER: TRSWorldFilter = [[WORLD_PVP, WORLD_DEADMAN, WORLD_SKILL, WORLD_AUSTRALIA, WORLD_GERMANY, WORLD_UK], [302,330,430,431,432,433,434,435,436,437,438,439,440]];
 
 type
   TScript = record
     Walker: TRSWalker;
     Antiban: TAntiban;
     ClientPath: String;
-    ClientProcess: TProcess;
   end;
 
 var
@@ -76,6 +75,13 @@ begin
   AddOnTerminate(@Walker.Free);
 end;
 
+// Script.WalkAnywhere-: Uses 'world.png' to walk somewhere.  Not good for lots of use since RSWalker is reloaded each time.
+procedure TScript.WalkAnywhere(p: TPoint; downsample: Int32 = 6);
+begin
+  Script.LoadMap('world.png', downsample);
+  Script.Walker.WebWalk(p);
+end;
+
 // Script.StartClient-: Initializes OSRS client & SRL
 procedure TScript.StartClient(ClientPath: String); begin
   writeln('Script.StartClient-: Setting up SRL.');
@@ -89,7 +95,6 @@ procedure TScript.Free; begin
   if Assigned(Walker) then
     Walker.Free;
     RSClient.Close();
-    ClientProcess.Free();
 
   writeln('Script.Free-: Script freed.');
 end;
@@ -134,13 +139,19 @@ end;
 function TScript.Login(worldParams: TRSWorldFilter = MY_DEFAULT_WORLD_FILTER): Boolean; // login using world filters
 var
   p: TPlayer;  // current player
+  tempWorld: Int32 = 0;
+
 begin
   Result := False;
   p := Players.GetCurrent()^;
   p.WorldFilter := worldParams;
+  tempWorld := p.World;
+  p.World := 0;
 
   writeln(Format('Script.Login-: %s is logging in!', [p.LoginName]));
   Result := Players.LoginCurrent();
+  p.World := tempWorld;
+
 
   writeln('Script.Login-: Setting default camera options.');
   Options.SetZoom(50);
@@ -166,7 +177,7 @@ procedure TScript.Init(clientPath: String); begin
 end;
 
 // Script.Antiban-: Runs the Antiban.
-procedure TScript.Antiban; begin
+procedure TScript.DoAntiban; begin
   writeln('Script.Antiban-: Doing Antiban.');
   if not SRL.IsLoggedIn() then begin
     writeln('Script.Antiban-: Player not logged in, relogging...');
