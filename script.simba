@@ -32,8 +32,8 @@
 {$I SRL/osr/rsclient.simba}
 {$I SRL/osr/rsclient_overrides.simba}
 
-const                                                                                                                                                // popular & west coast US worlds
-  MY_DEFAULT_WORLD_FILTER: TRSWorldFilter = [[WORLD_PVP, WORLD_DEADMAN, WORLD_SKILL, WORLD_AUSTRALIA, WORLD_GERMANY, WORLD_UK], [302,330,430,431,432,433,434,435,436,437,438,439,440]];
+const                                                                                                        // uk filter doesnt work ?                                        // popular & west coast US worlds
+  MY_DEFAULT_WORLD_FILTER: TRSWorldFilter = [[WORLD_PVP, WORLD_DEADMAN, WORLD_SKILL, WORLD_AUSTRALIA, WORLD_GERMANY, WORLD_UK], [302,330,393,394,430,431,432,433,434,435,436,437,438,439,440]];
 
 type
   TScript = record
@@ -44,6 +44,7 @@ type
 
 var
   Script: TScript;
+  prevBitmap: Integer = -1;   // TODO: find better place for this
 
 // Script.LoadMap-: Loads a map into RSWalker.
 procedure TScript.LoadMap(mapPath: String; downsample: Integer = 6); begin
@@ -169,7 +170,7 @@ procedure TScript.Init(clientPath: String); begin
   RSClient.SetFocus();
 
   writeln('Script.Init-: Initializing Antiban.');
-  Antiban.Init(SKILL_TOTAL, 4);
+  Antiban.Init([SKILL_TOTAL], 4);
   Antiban.SetupBiometrics();
 
   AddOnTerminate(@Script.Free);
@@ -210,7 +211,12 @@ var
   width, height, bMapIndex: Int32;
 
 begin
-  writeln('Script.DebugATPA-: Drawing ATPA :)');
+  if prevBitmap <> -1 then begin
+    writeln('Script.DebugATPA-: Freeing previous bitmap.');
+    FreeBitmap(prevBitmap);
+  end;
+
+  writeln('Script.DebugATPA-: Drawing ATPA.');
 
   b := Mainscreen.GetBounds();
   width  := b.X1 - b.X2;
@@ -226,7 +232,9 @@ begin
   DisplayDebugImgWindow(width, height);
   DrawBitmapDebugImg(bMapIndex);
 
-  writeln('Script.DebugATPA-: Displaying ATPA!');
+  prevBitmap := bMapIndex;
+
+  writeln('Script.DebugATPA-: Displaying ATPA.');
 end;
 
 procedure TScript.DebugTPA(TPA: TPointArray);
@@ -235,7 +243,12 @@ var
   width, height, bMapIndex: Int32;
 
 begin
-  writeln('Script.DebugTPA-: Drawing TPA :)');
+  if prevBitmap <> -1 then begin
+    writeln('Script.DebugTPA-: Freeing previous bitmap.');
+    FreeBitmap(prevBitmap);
+  end;
+
+  writeln('Script.DebugTPA-: Drawing TPA.');
 
   b := Mainscreen.GetBounds();
   width  := b.X1 - b.X2;
@@ -249,5 +262,7 @@ begin
   DisplayDebugImgWindow(width, height);
   DrawBitmapDebugImg(bMapIndex);
 
-  writeln('Script.DebugTPA-: Displaying TPA!');
+  prevBitmap := bMapIndex;
+
+  writeln('Script.DebugTPA-: Displaying TPA.');
 end;
