@@ -1,0 +1,135 @@
+{$include_once Script/script.simba}
+
+procedure DoDialogue(options: Array of Int32); // do chat by chat option indices, not strings :) convenient when paired with quest quick guides
+var
+  option: Int32;
+  chatOption: TRSChatOption;
+  chatOptions: TRSChatOptionArray;
+
+begin
+  writeln('DoDialogue-: Starting.');
+
+  Script.Walker.WaitPlayerMoving();
+  Wait(RandomRange(1500, 3500));
+
+  for option in options do begin
+    while Chatbox.ClickContinue() do Chatbox.PleaseWait();
+
+    Chatbox.PleaseWait();
+    chatOptions := Chatbox.GetOptions();
+
+    // writeln('chat options!');
+    // for chatOption in chatOptions do begin
+    //   writeln(chatOption.Text);
+    // end;
+    // writeln('end chat options!');
+
+    writeln(chatOptions[option].Text);
+    Chatbox.ClickOption([chatOptions[option].Text]);
+
+    Chatbox.PleaseWait();
+  end;
+
+  writeln('DoDialogue-: Done selecting options.');
+
+  while Chatbox.ClickContinue() do Chatbox.PleaseWait();
+
+  writeln('DoDialogue-: Done.');
+end;
+
+// finds an object and moves the mouse there.   returns true if an object was found
+function HoverColor(color: TCTS2Color; cluster: Integer; filterSize: TIntegerArray; uptext: String; b: Tbox): Boolean;
+var
+  TPA, obj: TPointArray;
+  ATPA: T2DPointArray;
+  p: TPoint;
+
+begin
+  Result := False;
+
+  if SRL.FindColors(TPA, color, b) > 0 then begin
+    ATPA := TPA.Cluster(cluster);
+    ATPA.FilterSize(filterSize[0], filterSize[1]);
+    ATPA.SortByIndex(Mainscreen.GetMiddle());
+
+    {$IFDEF DEBUG}
+      Script.DebugATPA(ATPA);
+    {$ENDIF}
+
+    for obj in ATPA do begin
+      p := obj[Random(Length(obj))];
+      writeln(p);
+      Mouse.Move(p);
+      if Mainscreen.IsUpText(uptext) then begin
+        Result := True;
+        Break;
+      end;
+    end;
+  end;
+end;
+
+// finds an object and moves the mouse there.   returns true if an object was found
+function HoverDTM(dtm: Integer; uptext: String): Boolean;
+var
+  tpa, obj: TPointArray;
+  p: TPoint;
+  b: TBox; // bounds
+
+begin
+  Result := False;
+  b := Mainscreen.GetBounds();
+
+  FindDTMs(dtm, tpa, b.X1, b.Y1, b.X2, b.Y2);
+
+  for p in tpa do begin
+    Mouse.Move(p);
+    if Mainscreen.IsUpText(uptext) then begin
+      Result := True;
+      Break;
+    end;
+  end;
+
+  {$IFDEF DEBUG}
+    Script.DebugTPA(TPA);
+    Wait(5000);
+  {$ENDIF}
+end;
+
+
+procedure TPointArray.Shuffle();
+var
+  p, r: TPoint; // r = random point
+
+begin
+  for p in Self do begin
+    r := Self[Random(High(Self))];
+    tSwap(p, r);
+  end;
+end;
+
+
+// add a raw path to a rswalker webgraph
+procedure TWebGraph.AppendRaw(path: T2DIntArray);
+var
+  rawNode: TIntArray;
+  p: TPoint;
+  i: Integer = -1;
+begin
+  for rawNode in path do begin
+    p := Point(rawNode[0], rawNode[1]);
+    Self.AddNode(p, i);
+    Inc(i);
+  end;
+end;
+
+// add path to a rswalker webgraph
+procedure TWebGraph.Append(path: TPointArray);
+var
+  p: TPoint;
+  i: Integer = -1;
+begin
+  for p in path do begin
+    Self.AddNode(p, i);
+    Inc(i);
+  end;
+end;
