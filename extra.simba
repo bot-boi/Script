@@ -16,13 +16,16 @@ begin
     while Chatbox.ClickContinue() do Chatbox.PleaseWait();
 
     Chatbox.PleaseWait();
+    Wait(RandomRange(59, 511));
     chatOptions := Chatbox.GetOptions();
 
-    // writeln('chat options!');
-    // for chatOption in chatOptions do begin
-    //   writeln(chatOption.Text);
-    // end;
-    // writeln('end chat options!');
+    {$IFDEF DEBUG}
+      writeln('chat options!');
+      for chatOption in chatOptions do begin
+        writeln(chatOption.Text);
+      end;
+      writeln('end chat options!');
+    {$ENDIF}
 
     writeln(chatOptions[option].Text);
     Chatbox.ClickOption([chatOptions[option].Text]);
@@ -38,11 +41,12 @@ begin
 end;
 
 // finds an object and moves the mouse there.   returns true if an object was found
-function HoverColor(color: TCTS2Color; cluster: Integer; filterSize: TIntegerArray; uptext: String; b: Tbox): Boolean;
+function HoverColors(color: TCTS2Color; cluster: Integer; filterSize: TIntegerArray; uptext: String; b: Tbox): Boolean;
 var
   TPA, obj: TPointArray;
   ATPA: T2DPointArray;
   p: TPoint;
+  i: Integer;
 
 begin
   Result := False;
@@ -50,26 +54,29 @@ begin
   if SRL.FindColors(TPA, color, b) > 0 then begin
     ATPA := TPA.Cluster(cluster);
     ATPA.FilterSize(filterSize[0], filterSize[1]);
-    ATPA.SortByIndex(Mainscreen.GetMiddle());
+    ATPA.SortByMiddle(Mainscreen.GetMiddle());
 
     {$IFDEF DEBUG}
-      Script.DebugATPA(ATPA);
+      Bitmap.FromClient();
+      Bitmap.DrawATPA(ATPA);
+      Bitmap.UpdateDebugImage();
     {$ENDIF}
 
     for obj in ATPA do begin
-      p := obj[Random(Length(obj))];
-      writeln(p);
-      Mouse.Move(p);
-      if Mainscreen.IsUpText(uptext) then begin
-        Result := True;
-        Break;
+      obj.Shuffle();               // 1-8 tries, cutoff of 9
+      for i := 0 to Trunc(SRL.TruncatedGauss(1, 8, 9)) do begin
+        p := obj[i];
+        Mouse.Move(p);
+        if Mainscreen.IsUpText(uptext) then begin
+          Exit(True);
+        end;
       end;
     end;
   end;
 end;
 
 // finds an object and moves the mouse there.   returns true if an object was found
-function HoverDTM(dtm: Integer; uptext: String): Boolean;
+function HoverDTMs(dtm: Integer; uptext: String): Boolean;
 var
   tpa, obj: TPointArray;
   p: TPoint;

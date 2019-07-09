@@ -37,8 +37,9 @@ const                                                                           
 
 type
   TScript = record
-    Walker: TRSWalker;
-    Antiban: TAntiban;
+    MapPath:    String;
+    Walker:     TRSWalker;
+    Antiban:    TAntiban;
     ClientPath: String;
   end;
 
@@ -48,12 +49,18 @@ var
 
 // Script.LoadMap-: Loads a map into RSWalker.
 procedure TScript.LoadMap(mapPath: String; downsample: Integer = 6); begin
+  if Script.MapPath = mapPath then begin
+    writeln(Format('Script.LoadMap-: Map %s has already been loaded', [mapPath]));
+    Exit();
+  end;
+
   if Assigned(Walker) then
     writeln('Script.LoadMap-: Walker already initialized.  Reloading Walker...');
     Walker.Free;
 
   writeln('Script.LoadMap-: Loading map: ' + mapPath);
   Walker.Init(mapPath, downsample);
+  Script.MapPath := mapPath;
   AddOnTerminate(@Walker.Free);
 end;
 
