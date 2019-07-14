@@ -45,6 +45,7 @@ type
 
 var
   Script: TScript;
+  Bitmap: TMufasaBitmap;
   prevBitmap: Integer = -1;   // TODO: find better place for this
 
 // Script.LoadMap-: Loads a map into RSWalker.
@@ -178,7 +179,12 @@ procedure TScript.Init(clientPath: String); begin
 
   writeln('Script.Init-: Initializing Antiban.');
   Antiban.Init([SKILL_TOTAL], 4);
-  Antiban.SetupBiometrics();
+
+  {$IFDEF DEBUG}
+    writeln('Script.Init-: Initializing DEBUG Bitmap');
+    Bitmap := GetMufasaBitmap(CreateBitmap(600, 600));
+    Bitmap.FromClient();
+  {$ENDIF}
 
   AddOnTerminate(@Script.Free);
   writeln('Script.Init-: Done.');

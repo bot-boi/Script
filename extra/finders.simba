@@ -1,0 +1,153 @@
+// finds an object and moves the mouse there.   returns true if an object was found
+function HoverColors(color: TCTS2Color; cluster: Integer; filterSize: TIntegerArray; uptext: String; b: Tbox): Boolean;
+var
+  TPA, obj: TPointArray;
+  ATPA: T2DPointArray;
+  p: TPoint;
+  i: Integer;
+
+begin
+  Result := False;
+
+  if SRL.FindColors(TPA, color, b) > 0 then begin
+    ATPA := TPA.Cluster(cluster);
+    ATPA.FilterSize(filterSize[0], filterSize[1]);
+    ATPA.SortByMiddle(Mainscreen.GetMiddle());
+
+    {$IFDEF DEBUG}
+      Bitmap.FromClient();
+      Bitmap.DrawATPA(ATPA);
+      Bitmap.UpdateDebugImage();
+    {$ENDIF}
+
+    for obj in ATPA do begin
+      obj.Shuffle();               // 1-8 tries, cutoff of 9
+      for i := 0 to Trunc(SRL.TruncatedGauss(1, 8, 9)) do begin
+        p := obj[i];
+        Mouse.Move(p);
+        if Mainscreen.IsUpText(uptext) then begin
+          Exit(True);
+        end;
+      end;
+    end;
+  end;
+end;
+
+// finds an object and moves the mouse there.   returns true if an object was found
+function HoverDTMs(dtm: Integer; uptext: String): Boolean;
+var
+  tpa, obj: TPointArray;
+  p: TPoint;
+  b: TBox; // bounds
+
+begin
+  Result := False;
+  b := Mainscreen.GetBounds();
+
+  FindDTMs(dtm, tpa, b.X1, b.Y1, b.X2, b.Y2);
+
+  for p in tpa do begin
+    Mouse.Move(p);
+    if Mainscreen.IsUpText(uptext) then begin
+      Result := True;
+      Break;
+    end;
+  end;
+
+  {$IFDEF DEBUG}
+    Script.DebugTPA(TPA);
+    Wait(5000);
+  {$ENDIF}
+end;
+
+// get colors where there are dots on the minimap
+function GetColorsInDots(dots: set of EMinimapDotType; color: TCTS2Color; cluster: Integer; filterSize: TIntegerArray): T2DPointArray;
+var
+  NPCMinimap:    TPointArray; // position of yellow dots on minimap
+  NPCMainscreen: TPointArray; // position of yellow dots on mainscreen
+  NPCTiles:      TBoxArray;   // tiles on mainscreen that containt yellow dots
+  tile:          TBox;
+  poin:          TPoint;
+  atpa, _atpa:   T2DPointArray;
+  tpa:           TPointArray;
+  rp:            TPoint; // random point
+
+begin
+  Result := [];
+
+  NPCMinimap := Minimap.GetDots(dots); //  get dots, map them to ms as tbox
+  for poin in NPCMinimap do begin
+    tile := Minimap.PointToMsBox(poin);
+    if Mainscreen.GetBounds().Contains(tile) then begin
+      NPCTiles += Minimap.PointToMsBox(poin);
+    end;
+  end;
+
+  for tile in NPCTiles do begin             // find target colors in boxes
+    SRL.FindColors(tpa, color, tile);
+    _atpa := tpa.Cluster(cluster);
+    atpa += _atpa;
+  end;
+  atpa.FilterSize(filterSize[0], filtersize[1]);
+  atpa.SortByMiddle(Mainscreen.GetMiddle());
+
+  {$IFDEF DEBUG}
+    Bitmap.FromClient();
+    Bitmap.DrawBoxes(NPCTiles, False, $FFFFFF);
+    Bitmap.DrawATPA(atpa);
+    Bitmap.UpdateDebugImage();
+  {$ENDIF}
+
+  Exit(atpa);
+end;
+
+// searches for colors in rswalker tiles.  tiles are picked using map coords
+function GetColorsInTiles(tileCoords: TPointArray; color: TCTS2Color; cluster: Integer; filterSize: TIntegerArray): T2DPointArray;   // find color in tiles would be a useful fn
+var
+  p: TPoint;
+  tiles: TBoxArray;
+  tile, searchArea: Tbox;
+  atpa: T2DPointArray;
+  tpa: TPointArray;
+
+begin
+  for p in tileCoords do begin
+    tile := Script.Walker.GetTileMS(p).Bounds();
+    tiles.Append(tile);
+  end;
+
+  searchArea := tiles.Merge();
+
+  if SRL.FindColors(tpa, color, searchArea) then begin
+    atpa := tpa.Cluster(cluster);
+    atpa.filterSize(filterSize[0], filterSize[1]);
+    Result := atpa;
+  end;
+
+  {$IFDEF DEBUG}
+    Bitmap.FromClient();
+    Bitmap.DrawBox(searchArea, $FFFFFF);
+    Bitmap.DrawATPA(atpa);
+    Bitmap.UpdateDebugImage();
+  {$ENDIF}
+end;
+
+function FindColorsInTiles(tileCoords: TPointArray; color: TCTS2Color; cluster: Integer; filterSize: TIntegerArray): Boolean;
+begin
+  Result := Length(GetColorsInTiles(tileCoords, color, cluster, filterSize)) > 0;
+end;
+
+function HoverObjectInTile(tileCoords: TPointArray; color: TCTS2Color; cluster: Integer; filterSize: TIntegerArray; uptext: String): Boolean;
+var
+  tpa: TPointArray;
+  atpa: T2DPointArray;
+begin
+  atpa := GetColorsInTiles(tileCoords, color, cluster, filterSize);
+  for tpa in atpa do begin
+    Mouse.Move(tpa[Random(Length(tpa))]);
+    if Mainscreen.IsUpText(uptext) then begin
+      Result := True;
+      Break;
+    end;
+  end;
+end;

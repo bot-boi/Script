@@ -1,4 +1,5 @@
 {$include_once Script/script.simba}
+{$include_once Script/extra/finders.simba}
 
 procedure DoDialogue(options: Array of Int32); // do chat by chat option indices, not strings :) convenient when paired with quest quick guides
 var
@@ -8,13 +9,11 @@ var
 
 begin
   writeln('DoDialogue-: Starting.');
-
   Script.Walker.WaitPlayerMoving();
   Wait(RandomRange(1500, 3500));
 
   for option in options do begin
     while Chatbox.ClickContinue() do Chatbox.PleaseWait();
-
     Chatbox.PleaseWait();
     Wait(RandomRange(59, 511));
     chatOptions := Chatbox.GetOptions();
@@ -29,84 +28,37 @@ begin
 
     writeln(chatOptions[option].Text);
     Chatbox.ClickOption([chatOptions[option].Text]);
-
     Chatbox.PleaseWait();
   end;
-
   writeln('DoDialogue-: Done selecting options.');
-
   while Chatbox.ClickContinue() do Chatbox.PleaseWait();
-
   writeln('DoDialogue-: Done.');
 end;
 
-// finds an object and moves the mouse there.   returns true if an object was found
-function HoverColors(color: TCTS2Color; cluster: Integer; filterSize: TIntegerArray; uptext: String; b: Tbox): Boolean;
+// ripped from a post by flight
+procedure HumanMMouse(eX, eY, MouseSpeed: Integer);
 var
-  TPA, obj: TPointArray;
-  ATPA: T2DPointArray;
-  p: TPoint;
-  i: Integer;
-
+  randSpeed: extended;
+  X,Y,A,Dist,MP: integer;
 begin
-  Result := False;
+  A := MouseSpeed;
+  GetMousePos(X, Y);
+  Dist := Distance(X, Y, eX, eY);
+  MP := Round(Dist/150);
+  if MP < 0 then
+    MP := 1;
 
-  if SRL.FindColors(TPA, color, b) > 0 then begin
-    ATPA := TPA.Cluster(cluster);
-    ATPA.FilterSize(filterSize[0], filterSize[1]);
-    ATPA.SortByMiddle(Mainscreen.GetMiddle());
-
-    {$IFDEF DEBUG}
-      Bitmap.FromClient();
-      Bitmap.DrawATPA(ATPA);
-      Bitmap.UpdateDebugImage();
-    {$ENDIF}
-
-    for obj in ATPA do begin
-      obj.Shuffle();               // 1-8 tries, cutoff of 9
-      for i := 0 to Trunc(SRL.TruncatedGauss(1, 8, 9)) do begin
-        p := obj[i];
-        Mouse.Move(p);
-        if Mainscreen.IsUpText(uptext) then begin
-          Exit(True);
-        end;
-      end;
-    end;
-  end;
-end;
-
-// finds an object and moves the mouse there.   returns true if an object was found
-function HoverDTMs(dtm: Integer; uptext: String): Boolean;
-var
-  tpa, obj: TPointArray;
-  p: TPoint;
-  b: TBox; // bounds
-
-begin
-  Result := False;
-  b := Mainscreen.GetBounds();
-
-  FindDTMs(dtm, tpa, b.X1, b.Y1, b.X2, b.Y2);
-
-  for p in tpa do begin
-    Mouse.Move(p);
-    if Mainscreen.IsUpText(uptext) then begin
-      Result := True;
-      Break;
-    end;
-  end;
-
-  {$IFDEF DEBUG}
-    Script.DebugTPA(TPA);
-    Wait(5000);
-  {$ENDIF}
+  randSpeed := (random(MouseSpeed) / 2.0 + MouseSpeed) / 10.0;
+  Mouse.Move(RandomRange(eX-(A*MP), eX+(A*MP)), RandomRange(eY-(A*MP), eY+(A*MP)));
+  GetMousePos(X, Y);
+  Mouse.Move(eX, eY);
+  MouseSpeed := A;
 end;
 
 
 procedure TPointArray.Shuffle();
 var
   p, r: TPoint; // r = random point
-
 begin
   for p in Self do begin
     r := Self[Random(High(Self))];
