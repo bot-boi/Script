@@ -103,7 +103,6 @@ procedure TScript.Free; begin
   writeln('Script.Free-: Freeing Script.');
   if Assigned(Walker) then
     Walker.Free;
-    RSClient.Close();
 
   writeln('Script.Free-: Script freed.');
 end;

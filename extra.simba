@@ -35,8 +35,8 @@ begin
   writeln('DoDialogue-: Done.');
 end;
 
-// ripped from a post by flight
-procedure HumanMMouse(eX, eY, MouseSpeed: Integer);
+// ripped from a post by flight                       1 in 4 chance of miss
+procedure HumanMMouse(eX, eY, MouseSpeed: Integer; missChance: Integer = 4);
 var
   randSpeed: extended;
   X,Y,A,Dist,MP: integer;
@@ -49,12 +49,18 @@ begin
     MP := 1;
 
   randSpeed := (random(MouseSpeed) / 2.0 + MouseSpeed) / 10.0;
-  Mouse.Move(RandomRange(eX-(A*MP), eX+(A*MP)), RandomRange(eY-(A*MP), eY+(A*MP)));
+  if Random(missChance) = 0 then begin
+    Mouse.Move(RandomRange(eX-(A*MP), eX+(A*MP)), RandomRange(eY-(A*MP), eY+(A*MP)));
+  end;
   GetMousePos(X, Y);
   Mouse.Move(eX, eY);
   MouseSpeed := A;
 end;
 
+function InCombat(): Boolean;
+begin
+  Result := Length(Mainscreen.FindHPBars(Mainscreen.GetPlayerBox)) > 0;
+end;
 
 procedure TPointArray.Shuffle();
 var
