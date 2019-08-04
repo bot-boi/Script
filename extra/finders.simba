@@ -76,6 +76,8 @@ begin
   Result := [];
 
   NPCMinimap := Minimap.GetDots(dots); //  get dots, map them to ms as tbox
+  NPCMinimap.Offset([2, 2]);
+
   for poin in NPCMinimap do begin
     tile := Minimap.PointToMsBox(poin);
     if Mainscreen.GetBounds().Contains(tile) then begin
@@ -104,32 +106,38 @@ end;
 // searches for colors in rswalker tiles.  tiles are picked using map coords
 function GetColorsInTiles(tileCoords: TPointArray; color: TCTS2Color; cluster: Integer; filterSize: TIntegerArray): T2DPointArray;   // find color in tiles would be a useful fn
 var
-  p: TPoint;
+  poin: TPoint;
   tiles: TBoxArray;
   tile, searchArea: Tbox;
-  atpa: T2DPointArray;
+  atpa, _atpa: T2DPointArray;
   tpa: TPointArray;
 
 begin
-  for p in tileCoords do begin
-    tile := Script.Walker.GetTileMS(p).Bounds();
-    tiles.Append(tile);
+
+  for poin in tileCoords do begin
+    tile := Script.Walker.GetTileMS(poin).Bounds();
+    if Mainscreen.GetBounds.Contains(tile) then begin
+      tiles.Append(tile);
+    end;
   end;
 
-  searchArea := tiles.Merge();
-
-  if SRL.FindColors(tpa, color, searchArea) then begin
-    atpa := tpa.Cluster(cluster);
-    atpa.filterSize(filterSize[0], filterSize[1]);
-    Result := atpa;
+  for tile in tiles do begin
+    if SRL.FindColors(tpa, color, tile) then begin
+      _atpa := tpa.Cluster(cluster);
+      _atpa.filterSize(filterSize[0], filterSize[1]);
+      atpa += _atpa;
+    end;
   end;
 
   {$IFDEF DEBUG}
     Bitmap.FromClient();
-    Bitmap.DrawBox(searchArea, $FFFFFF);
+    for tile in tiles do begin
+      Bitmap.DrawBox(tile, $FFFFFF);
+    end;
     Bitmap.DrawATPA(atpa);
     Bitmap.UpdateDebugImage();
   {$ENDIF}
+  Exit(atpa);
 end;
 
 function FindColorsInTiles(tileCoords: TPointArray; color: TCTS2Color; cluster: Integer; filterSize: TIntegerArray): Boolean;

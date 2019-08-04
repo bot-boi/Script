@@ -177,7 +177,7 @@ procedure TScript.Init(clientPath: String); begin
   RSClient.SetFocus();
 
   writeln('Script.Init-: Initializing Antiban.');
-  Antiban.Init([SKILL_TOTAL], 4);
+  Antiban.Init(SKILL_TOTAL, 4);
 
   {$IFDEF DEBUG}
     writeln('Script.Init-: Initializing DEBUG Bitmap');
