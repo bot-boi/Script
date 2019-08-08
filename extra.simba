@@ -57,6 +57,40 @@ begin
   MouseSpeed := A;
 end;
 
+// move mouse to a random minimap dot on mainscreen
+// this should be in finder, uses HumanMMouse :(
+procedure HoverRandomDot(dots: set of EMinimapDotType; offset: TPoint);
+var
+  NPCMinimap:    TPointArray; // position of dots on minimap
+  NPCMainscreen: TPointArray; // position of dots on mainscreen
+  NPCTiles:      TBoxArray;   // tiles on mainscreen that contain dots
+  tile, target:  TBox;
+  poin, rp:      TPoint;      // point, random point
+begin
+  NPCMinimap := Minimap.GetDots(dots); //  get dots, map them to ms as tbox
+  NPCMinimap.Offset(offset);
+
+  for poin in NPCMinimap do begin
+    tile := Minimap.PointToMsBox(poin);
+    if Mainscreen.GetBounds().Contains(tile) then begin
+      NPCTiles += Minimap.PointToMsBox(poin);
+    end;
+  end;
+
+  target := NPCTiles[Random(Length(NPCTiles))];
+  rp     := SRL.RandomPoint(target);  // favors center
+
+  {$IFDEF DEBUG}
+      Bitmap.FromClient();
+      Bitmap.DrawBox(target, False, $FFFFFF);
+      Bitmap.DrawCross(rp, 5, $FFFFFF);
+      Bitmap.UpdateDebugImage();
+  {$ENDIF}
+
+  HumanMMouse(rp.X, rp.Y, RandomRange(10, 20));
+end;
+
+// check if player in combat.  this would be way more effective if i would just use runelite
 function InCombat(): Boolean;
 begin
   Result := Length(Mainscreen.FindHPBars(Mainscreen.GetPlayerBox)) > 0;
@@ -70,6 +104,20 @@ begin
     r := Self[Random(High(Self))];
     tSwap(p, r);
   end;
+end;
+
+// randomizes a point based on range
+function RandomizePoint(p: TPoint; range: Integer): TPoint;
+var
+  hx, hy, lx, ly, rx, ry: Integer; // high x, low x, random/result x
+begin
+  hx := p.x + range div 2;
+  hy := p.y + range div 2;
+  lx := p.x - range div 2;
+  ly := p.y - range div 2;
+  rx := RandomRange(lx, hx);
+  ry := RandomRange(ly, hy);
+  Result := Point(rx, ry);
 end;
 
 
