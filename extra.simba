@@ -35,6 +35,20 @@ begin
   writeln('DoDialogue-: Done.');
 end;
 
+procedure TravelTo(p: TPoint; maxDist: Integer = 16; timeout:Integer = ONE_MINUTE*5);
+var
+  myPos: TPoint;
+  t: TCountdown;
+
+begin
+  t.Init(timeout);
+  repeat
+    Script.Walker.WebWalk(p);
+    myPos := Script.Walker.GetMyPos();
+  until (myPos.DistanceTo(p) <= maxDist) or t.IsFinished();
+  while Minimap.IsPlayerMoving(100) do Wait(Random(50));
+end;
+
 // ripped from a post by flight                       1 in 4 chance of miss
 procedure HumanMMouse(eX, eY, MouseSpeed: Integer; missChance: Integer = 4);
 var
@@ -77,6 +91,8 @@ begin
     end;
   end;
 
+  if High(NPCTiles) <= -1 then Exit;
+
   target := NPCTiles[Random(Length(NPCTiles))];
   rp     := SRL.RandomPoint(target);  // favors center
 
@@ -88,6 +104,30 @@ begin
   {$ENDIF}
 
   HumanMMouse(rp.X, rp.Y, RandomRange(10, 20));
+end;
+
+// attempts to click an atpa with uptext for timeout amount of time
+function TryClickATPA(atpa: T2DPointArray; uptext: TStringArray; timeout: Integer = ONE_SECOND*2): Boolean;
+var
+  tpa:  TPointArray;
+  rp:   TPoint; // random point
+  T: TCountdown;
+
+begin
+  Result := False;
+  for tpa in atpa do begin
+    rp := tpa[Random(Length(tpa))];
+    HumanMMouse(rp.X, rp.Y, RandomRange(10, 20));
+    if Mainscreen.IsUpText(uptext) then begin
+      Result := Mouse.Click(ctRed);
+      if Result then Break;
+    end;
+
+    if T.IsFinished() then begin
+      Result := False;
+      Break;
+    end;
+  end;
 end;
 
 // check if player in combat.  this would be way more effective if i would just use runelite

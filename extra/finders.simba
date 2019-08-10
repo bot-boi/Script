@@ -106,7 +106,7 @@ begin
 end;
 
 // searches for colors in rswalker tiles.  tiles are picked using map coords
-function GetColorsInTiles(tileCoords: TPointArray; color: TCTS2Color; cluster: Integer; filterSize: TIntegerArray): T2DPointArray;   // find color in tiles would be a useful fn
+function GetColorsInTiles(tileCoords: TPointArray; color: TCTS2Color; cluster: Integer; filterSize: TIntegerArray; mergeTiles: Boolean = False): T2DPointArray;   // find color in tiles would be a useful fn
 var
   poin: TPoint;
   tiles: TBoxArray;
@@ -123,18 +123,31 @@ begin
     end;
   end;
 
-  for tile in tiles do begin
+  atpa := [];
+  if mergeTiles then begin   // maybe this should be a separate fn, like GetColorsBetweenPoints or something
+    tile := tiles.Merge();
     if SRL.FindColors(tpa, color, tile) then begin
-      _atpa := tpa.Cluster(cluster);
-      _atpa.filterSize(filterSize[0], filterSize[1]);
-      atpa += _atpa;
+      atpa := tpa.Cluster(cluster);
+      atpa.filterSize(filterSize[0], filterSize[1]);
+    end;
+  end else begin
+    for tile in tiles do begin
+      if SRL.FindColors(tpa, color, tile) then begin
+        _atpa := tpa.Cluster(cluster);
+        _atpa.filterSize(filterSize[0], filterSize[1]);
+        atpa += _atpa;
+      end;
     end;
   end;
 
   {$IFDEF DEBUG}
     Bitmap.FromClient();
-    for tile in tiles do begin
+    if mergeTiles then begin
       Bitmap.DrawBox(tile, $FFFFFF);
+    end else begin
+      for tile in tiles do begin
+        Bitmap.DrawBox(tile, $FFFFFF);
+      end;
     end;
     Bitmap.DrawATPA(atpa);
     Bitmap.UpdateDebugImage();
