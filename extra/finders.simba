@@ -33,8 +33,6 @@ begin
   end;
 end;
 
-
-
 // finds an object and moves the mouse there.   returns true if an object was found
 function HoverDTMs(dtm: Integer; uptext: String): Boolean;
 var
@@ -123,12 +121,13 @@ begin
     end;
   end;
 
-  atpa := [];
+  atpa := []; // case: no colors found
   if mergeTiles then begin   // maybe this should be a separate fn, like GetColorsBetweenPoints or something
     tile := tiles.Merge();
     if SRL.FindColors(tpa, color, tile) then begin
       atpa := tpa.Cluster(cluster);
       atpa.filterSize(filterSize[0], filterSize[1]);
+      atpa.SortByIndex(tile.Middle());
     end;
   end else begin
     for tile in tiles do begin
@@ -155,17 +154,17 @@ begin
   Exit(atpa);
 end;
 
-function FindColorsInTiles(tileCoords: TPointArray; color: TCTS2Color; cluster: Integer; filterSize: TIntegerArray): Boolean;
+function FindColorsInTiles(tileCoords: TPointArray; color: TCTS2Color; cluster: Integer; filterSize: TIntegerArray; mergeTiles: Boolean = False): Boolean;
 begin
-  Result := Length(GetColorsInTiles(tileCoords, color, cluster, filterSize)) > 0;
+  Result := Length(GetColorsInTiles(tileCoords, color, cluster, filterSize, mergeTiles)) > 0;
 end;
 
-function HoverObjectInTile(tileCoords: TPointArray; color: TCTS2Color; cluster: Integer; filterSize: TIntegerArray; uptext: String): Boolean;
+function HoverObjectInTile(tileCoords: TPointArray; color: TCTS2Color; cluster: Integer; filterSize: TIntegerArray; uptext: String; mergeTiles: Boolean = False): Boolean;
 var
   tpa: TPointArray;
   atpa: T2DPointArray;
 begin
-  atpa := GetColorsInTiles(tileCoords, color, cluster, filterSize);
+  atpa := GetColorsInTiles(tileCoords, color, cluster, filterSize, mergeTiles);
   for tpa in atpa do begin
     Mouse.Move(tpa[Random(Length(tpa))]);
     if Mainscreen.IsUpText(uptext) then begin
