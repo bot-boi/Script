@@ -12,18 +12,20 @@ begin
   Script.Walker.WaitPlayerMoving();
   Wait(RandomRange(1500, 3500));
 
+  while Chatbox.ClickContinue() do Chatbox.PleaseWait(); // case: empty option array
+
   for option in options do begin
     while Chatbox.ClickContinue() do Chatbox.PleaseWait();
     Chatbox.PleaseWait();
-    Wait(RandomRange(59, 511));
+    Wait(1000, 5000);
     chatOptions := Chatbox.GetOptions();
 
     {$IFDEF DEBUG}
-      writeln('chat options!');
+      writeln('DoDialogue-: chat options!');
       for chatOption in chatOptions do begin
         writeln(chatOption.Text);
       end;
-      writeln('end chat options!');
+      writeln('DoDialogue-: end chat options!');
     {$ENDIF}
 
     writeln(chatOptions[option].Text);
@@ -49,7 +51,21 @@ begin
   while Minimap.IsPlayerMoving(100) do Wait(Random(50));
 end;
 
-// ripped from a post by flight                       1 in 4 chance of miss
+procedure WalkToPos(p: TPoint; maxDist: Integer = 16; timeout:Integer = ONE_MINUTE*5);
+var
+  myPos: TPoint;
+  t: TCountdown;
+
+begin
+  t.Init(timeout);
+  repeat                                 // same as travelto but doesnt use webwalking
+    Script.Walker.WalkPath([p]);
+    myPos := Script.Walker.GetMyPos();
+  until (myPos.DistanceTo(p) <= maxDist) or t.IsFinished();
+  while Minimap.IsPlayerMoving(100) do Wait(Random(50));
+end;
+
+// ripped from a post by flight                       1 in 4 chance of miss by default
 procedure HumanMMouse(eX, eY, MouseSpeed: Integer; missChance: Integer = 4);
 var
   randSpeed: extended;
@@ -66,6 +82,7 @@ begin
   if Random(missChance) = 0 then begin
     Mouse.Move(RandomRange(eX-(A*MP), eX+(A*MP)), RandomRange(eY-(A*MP), eY+(A*MP)));
   end;
+
   GetMousePos(X, Y);
   Mouse.Move(eX, eY);
   MouseSpeed := A;
@@ -97,13 +114,52 @@ begin
   rp     := SRL.RandomPoint(target);  // favors center
 
   {$IFDEF DEBUG}
-      Bitmap.FromClient();
-      Bitmap.DrawBox(target, False, $FFFFFF);
-      Bitmap.DrawCross(rp, 5, $FFFFFF);
-      Bitmap.UpdateDebugImage();
+    Bitmap.FromClient();
+    Bitmap.DrawBox(target, False, $FFFFFF);
+    Bitmap.DrawCross(rp, 5, $FFFFFF);
+    Bitmap.UpdateDebugImage();
   {$ENDIF}
 
   HumanMMouse(rp.X, rp.Y, RandomRange(10, 20));
+end;
+
+// test if player is near an hpbar
+// better than incombat if no other players are around
+function NearCombat(distance: Integer): Boolean;
+var
+  centerPoint: TPoint;
+  HPBars: THPBarArray;
+  HPBar:  THPBar;
+
+begin
+  centerPoint := Mainscreen.GetMiddle();
+  HPBars := Mainscreen.FindHPBars(Mainscreen.GetBounds());
+
+  for HPBar in HPBars do begin
+    if (centerPoint.DistanceTo(HPBar.Bounds.Middle()) <= distance) then begin
+      Exit(True);
+    end;
+  end;
+  Exit(False);
+end;
+
+// test if your player is near another player
+// distance on mmap is used, keep this in mind. 4px ~= 1 tile
+function NearPlayer(minDistance: Integer): Boolean;
+var
+  cp, pp: TPoint; // center point, player point
+  pps: TPointArray = []; // player points... pps lul
+begin
+  cp := Minimap.GetMiddle();
+  pps := Minimap.GetDots([MMDotPlayer]);
+  pps.Offset([2, 2]);
+
+  for pp in pps do begin
+    if cp.DistanceTo(pp) <= minDistance then begin
+      Exit(True);
+    end;
+  end;
+  Exit(False);
 end;
 
 // attempts to click an atpa with uptext for timeout amount of time
