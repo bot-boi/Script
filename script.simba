@@ -84,13 +84,6 @@ begin
   AddOnTerminate(@Walker.Free);
 end;
 
-// Script.WalkAnywhere-: Uses 'world.png' to walk somewhere.  Not good for lots of use since RSWalker is reloaded each time.
-procedure TScript.WalkAnywhere(p: TPoint; downsample: Int32 = 6);
-begin
-  Script.LoadMap('world.png', downsample);
-  Script.Walker.WebWalk(p);
-end;
-
 // Script.StartClient-: Initializes OSRS client & SRL
 procedure TScript.StartClient(ClientPath: String); begin
   writeln('Script.StartClient-: Setting up SRL.');

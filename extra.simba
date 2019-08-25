@@ -184,7 +184,38 @@ begin
   end;
 end;
 
-// check if player in combat.  this would be way more effective if i would just use runelite
+// attempts to open context menu on atpa for timeout amount of time
+function TryRClickATPA(atpa: T2DPointArray; uptext: TStringArray; timeout: Integer = ONE_SECOND*2): Boolean;
+var
+  tpa:  TPointArray;
+  rp:   TPoint; // random point
+  T: TCountdown;
+
+begin
+  Result := False;
+  T.Init(timeout);
+  while (not T.IsFinished()) do begin
+    for tpa in atpa do begin            // this could be a lot better, and less botty
+      rp := tpa[Random(Length(tpa))];
+      HumanMMouse(rp.X, rp.Y, RandomRange(10, 20));
+      if Mainscreen.IsUpText(uptext) then begin
+        Result := ChooseOption.Open();
+        if Result then Exit(Result);
+      end;
+    end;
+  end;
+end;
+
+// runs function until it returns true or times out
+procedure TryUntil(fn: Function(): Boolean; timeout: Integer);
+var
+  T: TCountdown;
+begin
+  T.Init(timeout);
+  repeat until (fn() or T.IsFinished());
+end;
+
+// check if player in combat.  this would be way more effective if i would just use runelite...
 function InCombat(): Boolean;
 begin
   Result := Length(Mainscreen.FindHPBars(Mainscreen.GetPlayerBox)) > 0;
