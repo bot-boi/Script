@@ -61,7 +61,7 @@ begin
 end;
 
 // get colors where there are dots on the minimap
-function GetColorsInDots(dots: set of EMinimapDotType; color: TCTS2Color; cluster: Integer; filterSize: TIntegerArray): T2DPointArray;
+function GetColorsInDots(dots: set of EMinimapDotType; color: TCTS2Color; cluster: Integer; filterSize: TIntegerArray; offset: TPoint = Point(2,2)): T2DPointArray;
 var
   NPCMinimap:    TPointArray; // position of yellow dots on minimap
   NPCMainscreen: TPointArray; // position of yellow dots on mainscreen
@@ -76,7 +76,7 @@ begin
   Result := [];
 
   NPCMinimap := Minimap.GetDots(dots); //  get dots, map them to ms as tbox
-  NPCMinimap.Offset([2, 2]);
+  NPCMinimap.Offset(offset);
 
   for poin in NPCMinimap do begin
     tile := Minimap.PointToMsBox(poin);

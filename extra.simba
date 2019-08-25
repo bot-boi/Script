@@ -1,5 +1,6 @@
-{$include_once Script/script.simba}
+// {$include_once Script/script.simba}  for ez debugging only
 {$include_once Script/extra/finders.simba}
+{$include_once Script/extra/mouse.simba}
 
 procedure DoDialogue(options: Array of Int32); // do chat by chat option indices, not strings :) convenient when paired with quest quick guides
 var
@@ -65,64 +66,6 @@ begin
   while Minimap.IsPlayerMoving(100) do Wait(Random(50));
 end;
 
-// ripped from a post by flight                       1 in 4 chance of miss by default
-procedure HumanMMouse(eX, eY, MouseSpeed: Integer; missChance: Integer = 4);
-var
-  randSpeed: extended;
-  X,Y,A,Dist,MP: integer;
-begin
-  A := MouseSpeed;
-  GetMousePos(X, Y);
-  Dist := Distance(X, Y, eX, eY);
-  MP := Round(Dist/150);
-  if MP < 0 then
-    MP := 1;
-
-  randSpeed := (random(MouseSpeed) / 2.0 + MouseSpeed) / 10.0;
-  if Random(missChance) = 0 then begin
-    Mouse.Move(RandomRange(eX-(A*MP), eX+(A*MP)), RandomRange(eY-(A*MP), eY+(A*MP)));
-  end;
-
-  GetMousePos(X, Y);
-  Mouse.Move(eX, eY);
-  MouseSpeed := A;
-end;
-
-// move mouse to a random minimap dot on mainscreen
-// this should be in finder, uses HumanMMouse :(
-procedure HoverRandomDot(dots: set of EMinimapDotType; offset: TPoint);
-var
-  NPCMinimap:    TPointArray; // position of dots on minimap
-  NPCMainscreen: TPointArray; // position of dots on mainscreen
-  NPCTiles:      TBoxArray;   // tiles on mainscreen that contain dots
-  tile, target:  TBox;
-  poin, rp:      TPoint;      // point, random point
-begin
-  NPCMinimap := Minimap.GetDots(dots); //  get dots, map them to ms as tbox
-  NPCMinimap.Offset(offset);
-
-  for poin in NPCMinimap do begin
-    tile := Minimap.PointToMsBox(poin);
-    if Mainscreen.GetBounds().Contains(tile) then begin
-      NPCTiles += Minimap.PointToMsBox(poin);
-    end;
-  end;
-
-  if High(NPCTiles) <= -1 then Exit;
-
-  target := NPCTiles[Random(Length(NPCTiles))];
-  rp     := SRL.RandomPoint(target);  // favors center
-
-  {$IFDEF DEBUG}
-    Bitmap.FromClient();
-    Bitmap.DrawBox(target, False, $FFFFFF);
-    Bitmap.DrawCross(rp, 5, $FFFFFF);
-    Bitmap.UpdateDebugImage();
-  {$ENDIF}
-
-  HumanMMouse(rp.X, rp.Y, RandomRange(10, 20));
-end;
-
 // test if player is near an hpbar
 // better than incombat if no other players are around
 function NearCombat(distance: Integer): Boolean;
@@ -160,50 +103,6 @@ begin
     end;
   end;
   Exit(False);
-end;
-
-// attempts to click an atpa with uptext for timeout amount of time
-function TryClickATPA(atpa: T2DPointArray; uptext: TStringArray; timeout: Integer = ONE_SECOND*2): Boolean;
-var
-  tpa:  TPointArray;
-  rp:   TPoint; // random point
-  T: TCountdown;
-
-begin
-  Result := False;
-  T.Init(timeout);
-  while (not T.IsFinished()) do begin
-    for tpa in atpa do begin            // this could be a lot better, and less botty
-      rp := tpa[Random(Length(tpa))];
-      HumanMMouse(rp.X, rp.Y, RandomRange(10, 20));
-      if Mainscreen.IsUpText(uptext) then begin
-        Result := Mouse.Click(ctRed);
-        if Result then Exit(Result);
-      end;
-    end;
-  end;
-end;
-
-// attempts to open context menu on atpa for timeout amount of time
-function TryRClickATPA(atpa: T2DPointArray; uptext: TStringArray; timeout: Integer = ONE_SECOND*2): Boolean;
-var
-  tpa:  TPointArray;
-  rp:   TPoint; // random point
-  T: TCountdown;
-
-begin
-  Result := False;
-  T.Init(timeout);
-  while (not T.IsFinished()) do begin
-    for tpa in atpa do begin            // this could be a lot better, and less botty
-      rp := tpa[Random(Length(tpa))];
-      HumanMMouse(rp.X, rp.Y, RandomRange(10, 20));
-      if Mainscreen.IsUpText(uptext) then begin
-        Result := ChooseOption.Open();
-        if Result then Exit(Result);
-      end;
-    end;
-  end;
 end;
 
 // runs function until it returns true or times out
